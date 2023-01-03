@@ -35,30 +35,30 @@ class Prio3(Vdaf):
         dst = VERSION + I2OSP(Prio3.ID, 4)
         inp = Prio3.Flp.encode(measurement)
 
-        # Generate input shares.
-        leader_input_share = inp
-        k_helper_input_shares = []
+        # Generate measurement shares.
+        leader_measurement_share = inp
+        k_helper_measurement_shares = []
         k_helper_blinds = []
         k_joint_rand_parts = []
         for j in range(Prio3.SHARES-1):
             k_blind = gen_rand(Prio3.Prg.SEED_SIZE)
             k_share = gen_rand(Prio3.Prg.SEED_SIZE)
-            helper_input_share = Prio3.Prg.expand_into_vec(
+            helper_measurement_share = Prio3.Prg.expand_into_vec(
                 Prio3.Flp.Field,
                 k_share,
                 dst + byte(j+1),
                 Prio3.Flp.INPUT_LEN
             )
-            leader_input_share = vec_sub(leader_input_share,
-                                         helper_input_share)
-            encoded = Prio3.Flp.Field.encode_vec(helper_input_share)
+            leader_measurement_share = vec_sub(leader_measurement_share,
+                                         helper_measurement_share)
+            encoded = Prio3.Flp.Field.encode_vec(helper_measurement_share)
             k_joint_rand_part = Prio3.Prg.derive_seed(
                 k_blind, dst + byte(j+1) + nonce + encoded)
-            k_helper_input_shares.append(k_share)
+            k_helper_measurement_shares.append(k_share)
             k_helper_blinds.append(k_blind)
             k_joint_rand_parts.append(k_joint_rand_part)
         k_leader_blind = gen_rand(Prio3.Prg.SEED_SIZE)
-        encoded = Prio3.Flp.Field.encode_vec(leader_input_share)
+        encoded = Prio3.Flp.Field.encode_vec(leader_measurement_share)
         k_leader_joint_rand_part = Prio3.Prg.derive_seed(
             k_leader_blind, dst + byte(0) + nonce + encoded)
         k_joint_rand_parts.insert(0, k_leader_joint_rand_part)
@@ -94,23 +94,22 @@ class Prio3(Vdaf):
             leader_proof_share = vec_sub(leader_proof_share,
                                          helper_proof_share)
 
-        # The Leader's "hint" consists of the joint randomness parts of the
-        # other Aggregators.
+        # Each aggregator's input share contains its measurement share, 
+        # proof share, blind, and joint randomness hint.
+        # The hints contain all other aggregators' joint randomness parts.
         k_leader_hint = k_joint_rand_parts[1:]
         input_shares = []
         input_shares.append(Prio3.encode_leader_share(
-            leader_input_share,
+            leader_measurement_share,
             leader_proof_share,
             k_leader_blind,
             k_leader_hint,
         ))
         for j in range(Prio3.SHARES-1):
-            # Each Helper's hint consists of the joint randomness part of the
-            # other Aggregators.
             k_helper_hint = k_joint_rand_parts[:j+1] + \
                             k_joint_rand_parts[j+2:]
             input_shares.append(Prio3.encode_helper_share(
-                k_helper_input_shares[j],
+                k_helper_measurement_shares[j],
                 k_helper_proof_shares[j],
                 k_helper_blinds[j],
                 k_helper_hint,
