@@ -3415,7 +3415,7 @@ class PrgSha3(Prg):
         dst_length_l = self.__to_bytes__(dst_length_l)
         pre_pad = self.__to_bytes__(1) + self.__to_bytes__(168)
         post_pad_l = (168 - ((len(self.s) + len(dst_length)+3) % 168)) % 168
-        post_pad = (0).to_bytes(post_pad_l)
+        post_pad = (0).to_bytes(post_pad_l, byteorder = 'little')
         dom_sep = pre_pad + dst_length_l + dst_length + self.s + post_pad
         stream = SHAKE128(dom_sep + self.x, self.l)
         return stream[-length:]
@@ -3466,7 +3466,7 @@ class PrgFixedKeyAes128(Prg):
         dst_length_l = self.__to_bytes(dst_length_l) #one byte value
         pre_pad = self.__to_bytes__(1) + self.__to_bytes__(168)
         post_pad_l = (168 - ((len(dst) + len(dst_length)+3) % 168)) % 168
-        post_pad = (0).to_bytes(post_pad_l)
+        post_pad = (0).to_bytes(post_pad_l, byteorder = 'little')
         dom_sep = pre_pad + dst_length_l + dst_length + dst + post_pad
         self.fixed_key = SHAKE128(dom_sep + binder, 16)
         self.seed = seed
