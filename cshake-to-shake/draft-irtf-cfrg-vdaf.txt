@@ -1810,8 +1810,9 @@ class PrgSha3(Prg):
         # stream each time `next()` is invoked, most implementations
         # of SHA-3 will expose an "absorb-then-squeeze" API that
         # allows stateful handling of the stream.
-        dst_length = len(self.s).to_bytes(byteorder = 'little')
-        dst_length_l = len(dst_length).to_bytes() #one byte value
+        dst_length_l = (len(self.s).bit_length() + 7)//8
+        dst_length = len(self.s).to_bytes(dst_length_l, byteorder = 'little')
+        dst_length_l = dst_length_l.to_bytes() #one byte value
         pre_pad = (1).to_bytes() + (168).to_bytes()
         post_pad_l = (168 - ((len(self.s) + len(dst_length)+3) % 168)) % 168
         post_pad = (0).to_bytes(post_pad_l)
@@ -1850,10 +1851,11 @@ class PrgFixedKeyAes128(Prg):
         #
         # Implementation note: This step can be cached across PRG
         # evaluations with many different seeds.
-        dst_length = len(self.s).to_bytes(byteorder = 'little')
-        dst_length_l = len(dst_length).to_bytes() #one byte value
+        dst_length_l = (len(dst).bit_length + 7)//8
+        dst_length = len(dst).to_bytes(dst_length_l, byteorder = 'little')
+        dst_length_l = dst_length_l.to_bytes() #one byte value
         pre_pad = (1).to_bytes() + (168).to_bytes()
-        post_pad_l = (168 - ((len(self.s) + len(dst_length)+3) % 168)) % 168
+        post_pad_l = (168 - ((len(dst) + len(dst_length)+3) % 168)) % 168
         post_pad = (0).to_bytes(post_pad_l)
         dom_sep = pre_pad + dst_length_l + dst_length + dst + post_pad
         self.fixed_key = SHAKE128(dom_sep + binder, 16)
