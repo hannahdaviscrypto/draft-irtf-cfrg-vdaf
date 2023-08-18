@@ -1812,7 +1812,7 @@ class PrgSha3(Prg):
         # allows stateful handling of the stream.
         dst_length = len(self.s).to_bytes(byteorder = 'little')
         dst_length_l = len(dst_length).to_bytes() #one byte value
-        pre_pad = 1.to_bytes() + 168.to_bytes()
+        pre_pad = (1).to_bytes() + (168).to_bytes()
         post_pad_l = (168 - ((len(self.s) + len(dst_length)+3) % 168)) % 168
         post_pad = 0.to_bytes(post_pad_l)
         dom_sep = pre_pad + dst_length_l + dst_length + self.s + post_pad
@@ -1852,7 +1852,7 @@ class PrgFixedKeyAes128(Prg):
         # evaluations with many different seeds.
         dst_length = len(self.s).to_bytes(byteorder = 'little')
         dst_length_l = len(dst_length).to_bytes() #one byte value
-        pre_pad = 1.to_bytes() + 168.to_bytes()
+        pre_pad = (1).to_bytes() + (168).to_bytes()
         post_pad_l = (168 - ((len(self.s) + len(dst_length)+3) % 168)) % 168
         post_pad = 0.to_bytes(post_pad_l)
         dom_sep = pre_pad + dst_length_l + dst_length + dst + post_pad
