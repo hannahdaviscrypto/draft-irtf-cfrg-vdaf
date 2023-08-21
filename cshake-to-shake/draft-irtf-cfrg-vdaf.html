@@ -3412,7 +3412,7 @@ class PrgSha3(Prg):
         # allows stateful handling of the stream.
         # The length of dst, the domain separation string, should be &lt;256 bytes
         # A longer dst will cause an OverflowError
-        dst_length = len(dst).to_bytes(1) #one byte value
+        dst_length = len(dst).to_bytes(1, byteorder = 'little') #one byte value
         stream = SHAKE128(dst_length + dst + self.x, self.l)
         return stream[-length:]
 </pre>
@@ -3456,7 +3456,7 @@ class PrgFixedKeyAes128(Prg):
         # evaluations with many different seeds.
         # The length of dst, the domain separation string, should be &lt;256 bytes
         # A longer dst will cause an OverflowError
-        dst_length = len(dst).to_bytes(1) #one byte value
+        dst_length = len(dst).to_bytes(1, byteorder = 'little') #one byte value
         self.fixed_key = SHAKE128(dst_length + dst + binder, 16)
         self.seed = seed
 
