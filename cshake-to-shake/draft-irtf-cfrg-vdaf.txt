@@ -5,12 +5,12 @@
 CFRG                                                        R. L. Barnes
 Internet-Draft                                                     Cisco
 Intended status: Informational                                   D. Cook
-Expires: 19 February 2024                                           ISRG
+Expires: 22 February 2024                                           ISRG
                                                                C. Patton
                                                               Cloudflare
                                                            P. Schoppmann
                                                                   Google
-                                                          18 August 2023
+                                                          21 August 2023
 
 
               Verifiable Distributed Aggregation Functions
@@ -53,7 +53,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 19 February 2024.
+   This Internet-Draft will expire on 22 February 2024.
 
 Copyright Notice
 
@@ -1810,14 +1810,10 @@ class PrgSha3(Prg):
         # stream each time `next()` is invoked, most implementations
         # of SHA-3 will expose an "absorb-then-squeeze" API that
         # allows stateful handling of the stream.
-        dst_length_l = (len(self.s).bit_length() + 7)//8
-        dst_length = len(self.s).to_bytes(dst_length_l, byteorder = 'little')
-        dst_length_l = self.__to_bytes__(dst_length_l)
-        pre_pad = self.__to_bytes__(1) + self.__to_bytes__(168)
-        post_pad_l = (168 - ((len(self.s) + len(dst_length)+3) % 168)) % 168
-        post_pad = (0).to_bytes(post_pad_l, byteorder = 'little')
-        dom_sep = pre_pad + dst_length_l + dst_length + self.s + post_pad
-        stream = SHAKE128(dom_sep + self.x, self.l)
+        # The length of dst, the domain separation string, should be <256 bytes
+        # A longer dst will cause an OverflowError
+        dst_length = len(dst).__to_bytes(1) #one byte value
+        stream = SHAKE128(dst_length + dst + self.x, self.l)
         return stream[-length:]
 
     def __to_bytes__(self, i):
@@ -1854,18 +1850,11 @@ class PrgFixedKeyAes128(Prg):
         #
         # Implementation note: This step can be cached across PRG
         # evaluations with many different seeds.
-        dst_length_l = (len(dst).bit_length + 7)//8
-        dst_length = len(dst).to_bytes(dst_length_l, byteorder = 'little')
-        dst_length_l = self.__to_bytes(dst_length_l) #one byte value
-        pre_pad = self.__to_bytes__(1) + self.__to_bytes__(168)
-        post_pad_l = (168 - ((len(dst) + len(dst_length)+3) % 168)) % 168
-        post_pad = (0).to_bytes(post_pad_l, byteorder = 'little')
-        dom_sep = pre_pad + dst_length_l + dst_length + dst + post_pad
-        self.fixed_key = SHAKE128(dom_sep + binder, 16)
+        # The length of dst, the domain separation string, should be <256 bytes
+        # A longer dst will cause an OverflowError
+        dst_length = len(dst).__to_bytes(1) #one byte value
+        self.fixed_key = SHAKE128(dst_length + dst + binder, 16)
         self.seed = seed
-
-    def __to_bytes__(self, i):
-        return i.to_bytes(1, byteorder = 'little)
 
     def next(self, length: Unsigned) -> Bytes:
         offset = self.length_consumed % 16
