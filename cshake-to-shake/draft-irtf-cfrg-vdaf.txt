@@ -5,12 +5,12 @@
 CFRG                                                        R. L. Barnes
 Internet-Draft                                                     Cisco
 Intended status: Informational                                   D. Cook
-Expires: 22 February 2024                                           ISRG
+Expires: 24 February 2024                                           ISRG
                                                                C. Patton
                                                               Cloudflare
                                                            P. Schoppmann
                                                                   Google
-                                                          21 August 2023
+                                                          23 August 2023
 
 
               Verifiable Distributed Aggregation Functions
@@ -53,7 +53,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 22 February 2024.
+   This Internet-Draft will expire on 24 February 2024.
 
 Copyright Notice
 
@@ -1785,38 +1785,35 @@ Table of Contents
    This section describes PrgSha3, a PRG based on the Keccak permutation
    of SHA-3 [FIPS202].  Keccak is used in the SHAKE128 mode of operation
    [FIPS202].  This Prg is RECOMMENDED for all use cases within VDAFs.
+   The length of the domain separation string dst passed to PrgSha3 MUST
+   NOT exceed 255 bytes.
 
-class PrgSha3(Prg):
-    """PRG based on SHA-3 (SHAKE128)."""
+   class PrgSha3(Prg):
+       """PRG based on SHA-3 (SHAKE128)."""
 
-    # Associated parameters
-    SEED_SIZE = 16
+       # Associated parameters
+       SEED_SIZE = 16
 
-    def __init__(self, seed, dst, binder):
-        # Implementation note: it is required that the length of dst be
-        # at most 255 bytes. This comes from the use of cSHAKE128's padding
-        # scheme (see {{SP800-185}} for details).
-        self.l = 0
-        self.x = seed + binder
-        self.s = dst
+       def __init__(self, seed, dst, binder):
+           self.l = 0
+           self.x = seed + binder
+           self.s = dst
 
-    def next(self, length: Unsigned) -> Bytes:
-        self.l += length
+       def next(self, length: Unsigned) -> Bytes:
+           self.l += length
 
-        # Function `SHAKE128(x, l)` is as defined in
-        # [FIPS 202, Section 6.2].
-        #
-        # Implementation note: Rather than re-generate the output
-        # stream each time `next()` is invoked, most implementations
-        # of SHA-3 will expose an "absorb-then-squeeze" API that
-        # allows stateful handling of the stream.
-        # The length of dst, the domain separation string, should be <256 bytes
-        # A longer dst will cause an OverflowError
-        dst_length = len(dst).to_bytes(1, byteorder = 'little') #one byte value
-        stream = SHAKE128(dst_length + dst + self.x, self.l)
-        return stream[-length:]
+           # Function `SHAKE128(x, l)` is as defined in
+           # [FIPS 202, Section 6.2].
+           #
+           # Implementation note: Rather than re-generate the output
+           # stream each time `next()` is invoked, most implementations
+           # of SHA-3 will expose an "absorb-then-squeeze" API that
+           # allows stateful handling of the stream.
+           dst_length = to_le_bytes(len(dst), 1)
+           stream = SHAKE128(dst_length + dst + self.x, self.l)
+           return stream[-length:]
 
-                Figure 12: Definition of PRG PrgSha3.
+                   Figure 12: Definition of PRG PrgSha3.
 
 6.2.2.  PrgFixedKeyAes128
 
@@ -1825,60 +1822,60 @@ class PrgSha3(Prg):
    are some cases where a more efficient instantiation based on fixed-
    key AES is possible.  For now, this is limited to the Prg used inside
    the Idpf Section 8.1 implementation in Poplar1 Section 8.3.  It is
-   NOT RECOMMENDED to use this Prg anywhere else.  See Security
-   Considerations Section 9 for a more detailed discussion.
+   NOT RECOMMENDED to use this Prg anywhere else.  The length of the
+   domain separation string dst passed to PrgFixedKeyAes128 MUST NOT
+   exceed 255 bytes.  See Security Considerations Section 9 for a more
+   detailed discussion.
 
-class PrgFixedKeyAes128(Prg):
-    """
-    PRG based on a circular collision-resistant hash function from
-    fixed-key AES.
-    """
+ class PrgFixedKeyAes128(Prg):
+     """
+     PRG based on a circular collision-resistant hash function from
+     fixed-key AES.
+     """
 
-    # Associated parameters
-    SEED_SIZE = 16
+     # Associated parameters
+     SEED_SIZE = 16
 
-    def __init__(self, seed, dst, binder):
-        self.length_consumed = 0
+     def __init__(self, seed, dst, binder):
+         self.length_consumed = 0
 
-        # Use SHA-3 to derive a key from the binder string and domain
-        # separation tag. Note that the AES key does not need to be
-        # kept secret from any party. However, when used with
-        # IdpfPoplar, we require the binder to be a random nonce.
-        #
-        # Implementation note: This step can be cached across PRG
-        # evaluations with many different seeds.
-        # The length of dst, the domain separation string, should be <256 bytes
-        # A longer dst will cause an OverflowError
-        dst_length = len(dst).to_bytes(1, byteorder = 'little') #one byte value
-        self.fixed_key = SHAKE128(dst_length + dst + binder, 16)
-        self.seed = seed
+         # Use SHA-3 to derive a key from the binder string and domain
+         # separation tag. Note that the AES key does not need to be
+         # kept secret from any party. However, when used with
+         # IdpfPoplar, we require the binder to be a random nonce.
+         #
+         # Implementation note: This step can be cached across PRG
+         # evaluations with many different seeds.
+         dst_length = to_le_bytes(len(dst), 1)
+         self.fixed_key = SHAKE128(dst_length + dst + binder, 16)
+         self.seed = seed
 
-    def next(self, length: Unsigned) -> Bytes:
-        offset = self.length_consumed % 16
-        new_length = self.length_consumed + length
-        block_range = range(
-            int(self.length_consumed / 16),
-            int(new_length / 16) + 1)
-        self.length_consumed = new_length
+     def next(self, length: Unsigned) -> Bytes:
+         offset = self.length_consumed % 16
+         new_length = self.length_consumed + length
+         block_range = range(
+             int(self.length_consumed / 16),
+             int(new_length / 16) + 1)
+         self.length_consumed = new_length
 
-        hashed_blocks = [
-            self.hash_block(xor(self.seed, to_le_bytes(i, 16))) \
-                         for i in block_range
-        ]
-        return concat(hashed_blocks)[offset:offset+length]
+         hashed_blocks = [
+             self.hash_block(xor(self.seed, to_le_bytes(i, 16))) \
+                          for i in block_range
+         ]
+         return concat(hashed_blocks)[offset:offset+length]
 
-    def hash_block(self, block):
-        """
-        The multi-instance tweakable circular correlation-robust hash
-        function of [GKWWY20] (Section 4.2). The tweak here is the key
-        that stays constant for all PRG evaluations of the same Client,
-        but differs between Clients.
+     def hash_block(self, block):
+         """
+         The multi-instance tweakable circular correlation-robust hash
+         function of [GKWWY20] (Section 4.2). The tweak here is the key
+         that stays constant for all PRG evaluations of the same Client,
+         but differs between Clients.
 
-        Function `AES128(key, block)` is the AES-128 blockcipher.
-        """
-        lo, hi = block[:8], block[8:]
-        sigma_block = concat([hi, xor(hi, lo)])
-        return xor(AES128(self.fixed_key, sigma_block), sigma_block)
+         Function `AES128(key, block)` is the AES-128 blockcipher.
+         """
+         lo, hi = block[:8], block[8:]
+         sigma_block = concat([hi, xor(hi, lo)])
+         return xor(AES128(self.fixed_key, sigma_block), sigma_block)
 
 6.2.3.  The Domain Separation Tag and Binder String
 
