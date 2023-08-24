@@ -1809,8 +1809,8 @@ Table of Contents
            # stream each time `next()` is invoked, most implementations
            # of SHA-3 will expose an "absorb-then-squeeze" API that
            # allows stateful handling of the stream.
-           dst_length = to_le_bytes(len(dst), 1)
-           stream = SHAKE128(dst_length + dst + self.x, self.l)
+           dst_length = to_le_bytes(len(self.s), 1)
+           stream = SHAKE128(dst_length + self.s + self.x, self.l)
            return stream[-length:]
 
                    Figure 12: Definition of PRG PrgSha3.
